@@ -3,6 +3,7 @@
 import os
 import numpy as np
 from ase.io import read
+import time
 
 def find_fermi_level(band_energies, kpt_weight,
                      nelect, occ=None, sigma=0.01, nedos=100,
@@ -219,17 +220,33 @@ class ebands3d(object):
         the irreducible BZ onto the whole reciprocal primitive cell.
         '''
 
-        nx, ny, nz = self.kmesh
-        self.fermi_ebands3d = []
+        # band energies of the k-points within the primitive cell
+        self.fermi_ebands3d_uc = []
+        # band energies of the k-points within the Brillouin Zone
+        self.fermi_ebands3d_bz = []
+
         for ispin in range(self.nspin):
-            tmp = []
+            uc_tmp = []
+            bz_tmp = []
             for iband in self.fermi_xbands[ispin]:
+                # the band energies of the k-points within primitive cell
                 etmp = self.ir_ebands[ispin, self.grid_to_ir_map, iband]
-                etmp.shape = (nx, ny, nz)
-                tmp.append(etmp)
+                etmp.shape = self.kmesh
+                uc_tmp.append(etmp)
 
-            self.fermi_ebands3d.append(tmp)
+                # the band energies of the k-points within Brillouin Zone
+                btmp = np.tile(etmp, (2,2,2))
+                s = btmp.shape
+                btmp.shape = (btmp.size)
+                # set the band energies of the k-points outside BZ to a large
+                # one so that the energy isosurface will not extent outside
+                # beyond the BZ.
+                btmp[np.logical_not(self.bz_in_kgrid_2uc)] = self.emax + 100.
+                btmp.shape = s
+                bz_tmp.append(btmp)
 
+            self.fermi_ebands3d_uc.append(uc_tmp)
+            self.fermi_ebands3d_bz.append(bz_tmp)
 
     def to_bxsf(self, prefix='ebands3d', ncol=6):
         '''
@@ -277,7 +294,7 @@ class ebands3d(object):
                 sign = 1 if ispin == 0 else -1
                 for ii in range(len(self.fermi_xbands[ispin])):
                     iband = self.fermi_xbands[ispin][ii]
-                    b3d = self.fermi_ebands3d[ispin][ii].copy()
+                    b3d = self.fermi_ebands3d_uc[ispin][ii].copy()
                     nx, ny, nz = b3d.shape
                     b3d.shape = (nx * ny, nz)
 
@@ -290,6 +307,89 @@ class ebands3d(object):
 
             out.write("\n  END_BANDGRID_3D\n")
             out.write("END_BLOCK_BANDGRID_3D\n")
+
+    def show_fermi_bz(self):
+        '''
+        Plotting the Fermi surface within the BZ using matplotlib.
+        '''
+        ############################################################
+        import matplotlib.pyplot as plt
+        from mpl_toolkits.mplot3d import Axes3D
+        from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+        ############################################################
+
+
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        # ax.set_aspect('equal')
+        ############################################################
+
+        ############################################################
+        # Plot the Brillouin Zone
+        ############################################################
+        p, l, f = get_brillouin_zone_3d(self.atoms.get_reciprocal_cell())
+
+        for xx in l:
+            ax.plot(xx[:,0], xx[:,1], xx[:,2], color='r', alpha=0.5, lw=1.0)
+        art = Poly3DCollection(f, facecolor='k', alpha=0.1)
+        ax.add_collection3d(art)
+        ############################################################
+
+        ############################################################
+        # Plot the Fermi Surface.
+        # Marching-cubes algorithm is used to find out the isosurface.
+        ############################################################
+        try:
+            from skimage.measure import marching_cubes_lewiner as marching_cubes
+        except ImportError:
+            try:
+                from skimage.measure import marching_cubes
+            except ImportError:
+                raise ImportError("scikit-image not installed.\n"
+                    "Please install with it with `conda install scikit-image` or `pip install scikit-image`")
+
+        b1, b2, b3 = np.linalg.norm(self.atoms.get_reciprocal_cell(), axis=1)
+        for ispin in range(self.nspin):
+            for ii in range(len(self.fermi_xbands[ispin])):
+                b3d = self.fermi_ebands3d_bz[ispin][ii]
+                nx, ny, nz = b3d.shape
+                print(b3d.shape)
+
+                # https://scikit-image.org/docs/stable/api/skimage.measure.html#skimage.measure.marching_cubes_lewiner
+                # verts : (V, 3) array
+                #     Spatial coordinates for V unique mesh vertices. Coordinate order
+                #     matches input `volume` (M, N, P).
+                # faces : (F, 3) array
+                #     Define triangular faces via referencing vertex indices from ``verts``.
+                #     This algorithm specifically outputs triangles, so each face has
+                #     exactly three indices.
+                # normals : (V, 3) array
+                #     The normal direction at each vertex, as calculated from the
+                #     data.
+                # values : (V, ) array
+                #     Gives a measure for the maximum value of the data in the local region
+                #     near each vertex. This can be used by visualization tools to apply
+                #     a colormap to the mesh.
+                verts, faces, normals, values = marching_cubes(b3d,
+                        level=self.efermi,
+                        spacing=(b1/nx, b2/ny, b3/nz)
+                        )
+                np.savetxt('v.dat', verts, fmt='%8.4f')
+                verts_cart = np.dot(
+                        verts - np.array([0.5, 0.5, 0.5]),
+                        self.atoms.get_reciprocal_cell()
+                        )
+                art = Poly3DCollection(verts[faces], facecolor='r', alpha=0.3)
+                ax.add_collection3d(art)
+
+        ############################################################
+        ax.set_xlim(-b1, b1)
+        ax.set_ylim(-b2, b2)
+        ax.set_zlim(-b3, b3)
+
+        plt.tight_layout()
+        plt.show()
+        ############################################################
 
     def ir_kpts_map(self, symprec=1E-5):
         '''
@@ -308,7 +408,9 @@ class ebands3d(object):
         mapping, grid = spglib.get_ir_reciprocal_mesh(self.kmesh, cell,
                 is_shift=[0, 0, 0], symprec=symprec)
 
-        self.kmesh_grid = grid
+        # the k-point grid in the primitive cell
+        # [-0.5, 0.5)
+        self.kgrid_uc = grid
         ir_kpts = grid[np.unique(mapping)] / self.kmesh.astype(float)
         assert (ir_kpts.shape == self.ir_kpath.shape) and \
                (np.allclose(self.ir_kpath, ir_kpts)), \
@@ -319,6 +421,49 @@ class ebands3d(object):
         dump[uniq_grid_index] = np.arange(uniq_grid_index.size, dtype=int)
         # mapping between the grid points and the ir k-points
         self.grid_to_ir_map = dump[mapping]
+
+        # t0 = time.time()
+
+        # A stupid algorithm to find out the index of the k-points within the
+        # BZ. First, expand the primitive cell from [0, 1] to [-1, 1]. Second,
+        # find the k-points with BZ using quick nearest-neighbor lookup.
+        nx, ny, nz = self.kmesh
+        kx, ky, kz = np.mgrid[-nx:nx, -ny:ny, -nz:nz]
+        self.kgrid_2uc = np.c_[kx.ravel(), ky.ravel(), kz.ravel()]
+
+        # t1 = time.time()
+        #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        # https://docs.scipy.org/doc/scipy/reference/tutorial/spatial.html#voronoi-diagrams
+        # cKDTree is implemented in cython, which is MUCH MUCH FASTER than KDTree
+        #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        from scipy.spatial import cKDTree
+        px, py, pz = np.tensordot(self.atoms.get_reciprocal_cell(), np.mgrid[-1:2, -1:2, -1:2], axes=[0,0])
+        points = np.c_[px.ravel(), py.ravel(), pz.ravel()]
+        tree = cKDTree(points)
+
+        # t2 = time.time()
+
+        #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        # Gamma point belong to the first BZ.
+        #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        gamma_region_id = tree.query([0,0,0])[1]
+        kgrid_2uc_region_id = tree.query(np.dot(self.kgrid_2uc /
+            np.array(self.kmesh, dtype=float),
+            self.atoms.get_reciprocal_cell()))[1]
+        #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+        # t3 = time.time()
+
+        self.bz_in_kgrid_2uc = np.zeros(kgrid_2uc_region_id.size, dtype=bool)
+        # find out the index of the k-points that are within BZ
+        self.bz_in_kgrid_2uc[kgrid_2uc_region_id == gamma_region_id]  = True
+
+        # Ideally, the number of k-points within BZ should be equal to the
+        # number of k-points in the primitive cell.
+        # print(np.sum(self.bz_in_kgrid_2uc), np.prod(self.kmesh))
+
+        # t3 = time.time()
+        # print("Time elapsed: {:.4f} {:.4f} {:.4f} s".format(t1 - t0, t2 - t1, t3 - t2))
 
     def set_kmesh(self, kmesh):
         '''
@@ -395,6 +540,9 @@ class ebands3d(object):
             ebands.shape = (self.ir_nkpts, self.nspin, self.nbnds)
             self.ir_ebands = ebands.swapaxes(0, 1)
 
+            self.emax = self.ir_ebands.max()
+            self.emin = self.ir_ebands.min()
+
 if __name__ == "__main__":
     """
     TEST
@@ -442,4 +590,5 @@ if __name__ == "__main__":
     xx = ebands3d()
     xx.get_fermi_ebands3d()
     xx.to_bxsf()
+    xx.show_fermi_bz()
     

@@ -15,7 +15,7 @@ The following python library must be installed to run the script
 
 **1. Calculate the band energies using VASP.**  
 
-Note that, Gamma-centered `KOINTS` is required. 
+Note that Gamma-centered `KOINTS` is required. 
 ```
 Monkhorst-Pack
 0
@@ -27,7 +27,7 @@ Moreover, there is *no need* to turn off the symmetry in the `INCAR` file. As is
 
 **2. Generate the .bxsf file**  
 
-When the first step is finished, use the script to obtain 3D bandgrids from VASP output files.
+When the first step is finished, use the script to obtain 3D bandgrids from VASP output files and save the result in `.bxsf` file.
 
 ```python
 from FermiSurface import ebands3d
@@ -43,7 +43,7 @@ b3d.to_bxsf(prefix='ebands3d')
 xcrysden --bxsf ebands3d.bxsf
 ```
 
-For example, below is the the Fermi surface of copper 
+For example, below is the the Fermi surface of `fcc Cu`
 
 ![Copper Fermi Surface](examples/copper/copper_fermi_surface.png) 
 

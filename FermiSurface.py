@@ -215,6 +215,8 @@ class ebands3d(object):
 
     def get_fermi_ebands3d(self):
         '''
+        For those bands that corss the Fermi level, unfold the band energies on
+        the irreducible BZ onto the whole reciprocal primitive cell.
         '''
 
         nx, ny, nz = self.kmesh
@@ -244,6 +246,7 @@ class ebands3d(object):
             out.write("  band_energies\n")
             out.write("  BANDGRID_3D_BANDS\n")
 
+            # the number of bands that corss the Fermi level
             number_fermi_xbands = sum([len(xx) for xx in self.fermi_xbands])
             out.write("    {:d}\n".format(number_fermi_xbands))
             # number of data-points in each direction (i.e. nx ny nz for 3D gr)

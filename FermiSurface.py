@@ -308,46 +308,13 @@ class ebands3d(object):
             out.write("\n  END_BANDGRID_3D\n")
             out.write("END_BLOCK_BANDGRID_3D\n")
 
-    def show_fermi_bz(self, savefig='fs.png', cmap='Spectral'):
+    def show_fermi_bz(self, plot='mpl',
+                      savefig='fs.png',
+                      cmap='Spectral'):
         '''
         Plotting the Fermi surface within the BZ using matplotlib.
         '''
-        ############################################################
-        import matplotlib as mpl
-        import matplotlib.pyplot as plt
-        from mpl_toolkits.mplot3d import Axes3D
-        from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
-        ############################################################
-
-        fig = plt.figure(figsize=(6,6))
-        ax = fig.add_subplot(111, projection='3d')
-        # ax.set_aspect('equal')
-        ############################################################
-
-        bcell = self.atoms.get_reciprocal_cell()
-        ############################################################
-        # Plot the Brillouin Zone
-        ############################################################
-        p, l, f = get_brillouin_zone_3d(bcell)
-
-        # The BZ outlines
-        for xx in l:
-            ax.plot(xx[:,0], xx[:,1], xx[:,2], color='k', lw=1.0)
-        # art = Poly3DCollection(f, facecolor='k', alpha=0.1)
-        # ax.add_collection3d(art)
-
-        basis_vector_clrs = ['r', 'g', 'b']
-        basis_vector_labs = ['x', 'y', 'z']
-        for ii in range(3):
-            ax.plot([0, bcell[ii,0]], [0, bcell[ii, 1]], [0, bcell[ii, 2]],
-                    color=basis_vector_clrs[ii], lw=1.5)
-            ax.text(bcell[ii, 0], bcell[ii, 1], bcell[ii, 2],
-                    basis_vector_labs[ii])
-        ############################################################
-        # Plot the Fermi Surface.
-        # Marching-cubes algorithm is used to find out the isosurface.
-        ############################################################
         try:
             from skimage.measure import marching_cubes_lewiner as marching_cubes
         except ImportError:
@@ -357,44 +324,138 @@ class ebands3d(object):
                 raise ImportError("scikit-image not installed.\n"
                     "Please install with it with `conda install scikit-image` or `pip install scikit-image`")
 
+        bcell = self.atoms.get_reciprocal_cell()
         b1, b2, b3 = np.linalg.norm(bcell, axis=1)
-        for ispin in range(self.nspin):
-            for ii in range(len(self.fermi_xbands[ispin])):
-                b3d = self.fermi_ebands3d_bz[ispin][ii]
-                nx, ny, nz = b3d.shape
 
-                # https://scikit-image.org/docs/stable/api/skimage.measure.html#skimage.measure.marching_cubes_lewiner
-                verts, faces, normals, values = marching_cubes(b3d,
-                        level=self.efermi,
-                        spacing=(2*b1/nx, 2*b2/ny, 2*b3/nz)
-                        )
-                verts_cart = np.dot(
-                        verts / np.array([b1, b2, b3]) - np.ones(3),
-                        bcell
-                        )
-                # np.savetxt('v.dat', verts, fmt='%8.4f')
-                # np.savetxt('vc.dat', verts_cart, fmt='%8.4f')
+        if plot.lower == 'mpl':
+            ############################################################
+            # Plot the Fermi surface using matplotlib
+            ############################################################
+            import matplotlib as mpl
+            import matplotlib.pyplot as plt
+            from mpl_toolkits.mplot3d import Axes3D
+            from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
-                cc = np.linalg.norm(np.sum(verts_cart[faces], axis=1), axis=1)
-                nn = mpl.colors.Normalize(vmin=cc.min(), vmax=cc.max())
+            ############################################################
 
-                art = Poly3DCollection(verts_cart[faces], facecolor='r',
-                        alpha=0.8, color=mpl.cm.get_cmap(cmap)(nn(cc)))
-                # art.set_edgecolor('k')
-                ax.add_collection3d(art)
+            fig = plt.figure(figsize=(6,6))
+            ax = fig.add_subplot(111, projection='3d')
+            # ax.set_aspect('equal')
+            ############################################################
 
-        ############################################################
-        ax.set_xlim(-b1, b1)
-        ax.set_ylim(-b2, b2)
-        ax.set_zlim(-b3, b3)
+            ############################################################
+            # Plot the Brillouin Zone
+            ############################################################
+            p, l, f = get_brillouin_zone_3d(bcell)
 
-        ax.set_title('Fermi Energy: {:.4f} eV'.format(self.efermi),
-                     fontsize='small')
+            # The BZ outlines
+            for xx in l:
+                ax.plot(xx[:,0], xx[:,1], xx[:,2], color='k', lw=1.0)
+            # art = Poly3DCollection(f, facecolor='k', alpha=0.1)
+            # ax.add_collection3d(art)
 
-        # plt.tight_layout()
-        plt.savefig(savefig, dpi=480)
-        plt.show()
-        ############################################################
+            basis_vector_clrs = ['r', 'g', 'b']
+            basis_vector_labs = ['x', 'y', 'z']
+            for ii in range(3):
+                ax.plot([0, bcell[ii,0]], [0, bcell[ii, 1]], [0, bcell[ii, 2]],
+                        color=basis_vector_clrs[ii], lw=1.5)
+                ax.text(bcell[ii, 0], bcell[ii, 1], bcell[ii, 2],
+                        basis_vector_labs[ii])
+            ############################################################
+            # Plot the Fermi Surface.
+            # Marching-cubes algorithm is used to find out the isosurface.
+            ############################################################
+            for ispin in range(self.nspin):
+                for ii in range(len(self.fermi_xbands[ispin])):
+                    b3d = self.fermi_ebands3d_bz[ispin][ii]
+                    nx, ny, nz = b3d.shape
+
+                    # https://scikit-image.org/docs/stable/api/skimage.measure.html#skimage.measure.marching_cubes_lewiner
+                    verts, faces, normals, values = marching_cubes(b3d,
+                            level=self.efermi,
+                            spacing=(2*b1/nx, 2*b2/ny, 2*b3/nz)
+                            )
+                    verts_cart = np.dot(
+                            verts / np.array([b1, b2, b3]) - np.ones(3),
+                            bcell
+                            )
+
+                    cc = np.linalg.norm(np.sum(verts_cart[faces], axis=1), axis=1)
+                    nn = mpl.colors.Normalize(vmin=cc.min(), vmax=cc.max())
+
+                    art = Poly3DCollection(verts_cart[faces], facecolor='r',
+                            alpha=0.8, color=mpl.cm.get_cmap(cmap)(nn(cc)))
+                    # art.set_edgecolor('k')
+                    ax.add_collection3d(art)
+
+            ############################################################
+            ax.set_xlim(-b1, b1)
+            ax.set_ylim(-b2, b2)
+            ax.set_zlim(-b3, b3)
+
+            ax.set_title('Fermi Energy: {:.4f} eV'.format(self.efermi),
+                         fontsize='small')
+
+            # plt.tight_layout()
+            plt.savefig(savefig, dpi=480)
+            plt.show()
+            ############################################################
+
+        elif plot.lower() == 'mayavi':
+            from mayavi import mlab 
+            # from tvtk.tools import visual
+
+            fig = mlab.figure()
+            # visual.set_viewer(fig)
+
+            # for b in bcell:
+            #     x, y, z = b
+            #     ar1 = visual.Arrow(x=y, y=y, z=z)
+            #     arrow_length = np.linalg.norm(b)
+            #     ar1.actor.scale=[arrow_length, arrow_length, arrow_length]
+            #     ar1.pos = ar1.pos/arrow_length
+            #     ar1.axis = [x, y, z]
+
+            ############################################################
+            # Plot the Brillouin Zone
+            ############################################################
+            p, l, f = get_brillouin_zone_3d(bcell)
+
+            bz_line_width = b1 / 200
+            # The BZ outlines
+            for xx in l:
+                mlab.plot3d(xx[:,0], xx[:,1], xx[:,2], 
+                            tube_radius=bz_line_width,
+                            color=(0, 0, 0))
+
+            ############################################################
+            # Plot the Fermi Surface.
+            # Marching-cubes algorithm is used to find out the isosurface.
+            ############################################################
+            for ispin in range(self.nspin):
+                for ii in range(len(self.fermi_xbands[ispin])):
+                    b3d = self.fermi_ebands3d_bz[ispin][ii]
+                    nx, ny, nz = b3d.shape
+                    verts, faces, normals, values = marching_cubes(b3d,
+                            level=self.efermi,
+                            spacing=(2*b1/nx, 2*b2/ny, 2*b3/nz)
+                            )
+                    verts_cart = np.dot(
+                            verts / np.array([b1, b2, b3]) - np.ones(3),
+                            bcell
+                            )
+                    mlab.triangular_mesh([vert[0] for vert in verts_cart],
+                                         [vert[1] for vert in verts_cart],
+                                         [vert[2] for vert in verts_cart],
+                                         faces,
+                                         colormap='Spectral') 
+
+            mlab.orientation_axes()
+            mlab.savefig(savefig)
+            mlab.show() 
+        else:
+            raise ValueError("Plotting method should be 'mpl' or 'mayavi'!")
+
 
     def ir_kpts_map(self, symprec=1E-5):
         '''
@@ -595,5 +656,5 @@ if __name__ == "__main__":
     xx = ebands3d()
     xx.get_fermi_ebands3d()
     xx.to_bxsf()
-    xx.show_fermi_bz()
+    xx.show_fermi_bz(plot='mayavi')
    

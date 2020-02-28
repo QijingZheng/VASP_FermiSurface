@@ -308,18 +308,19 @@ class ebands3d(object):
             out.write("\n  END_BANDGRID_3D\n")
             out.write("END_BLOCK_BANDGRID_3D\n")
 
-    def show_fermi_bz(self):
+    def show_fermi_bz(self, savefig='fs.png', cmap='Spectral'):
         '''
         Plotting the Fermi surface within the BZ using matplotlib.
         '''
         ############################################################
+        import matplotlib as mpl
         import matplotlib.pyplot as plt
         from mpl_toolkits.mplot3d import Axes3D
         from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+
         ############################################################
 
-
-        fig = plt.figure()
+        fig = plt.figure(figsize=(6,6))
         ax = fig.add_subplot(111, projection='3d')
         # ax.set_aspect('equal')
         ############################################################
@@ -354,8 +355,13 @@ class ebands3d(object):
                         )
                 # np.savetxt('v.dat', verts, fmt='%8.4f')
                 # np.savetxt('vc.dat', verts_cart, fmt='%8.4f')
-                art = Poly3DCollection(verts_cart[faces], facecolor='r', alpha=0.3)
-                art.set_edgecolor('k')
+
+                cc = np.linalg.norm(np.sum(verts_cart[faces], axis=1), axis=1)
+                nn = mpl.colors.Normalize(vmin=cc.min(), vmax=cc.max())
+
+                art = Poly3DCollection(verts_cart[faces], facecolor='r',
+                        alpha=0.8, color=mpl.cm.get_cmap(cmap)(nn(cc)))
+                # art.set_edgecolor('k')
                 ax.add_collection3d(art)
 
         ############################################################
@@ -374,7 +380,11 @@ class ebands3d(object):
         ax.set_ylim(-b2, b2)
         ax.set_zlim(-b3, b3)
 
+        ax.set_title('Fermi Energy: {:.4f} eV'.format(self.efermi),
+                     fontsize='small')
+
         # plt.tight_layout()
+        plt.savefig(savefig, dpi=480)
         plt.show()
         ############################################################
 

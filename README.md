@@ -38,7 +38,7 @@ b3d.get_fermi_ebands3d()
 b3d.to_bxsf(prefix='ebands3d')
 ```
 
-**3. Visualizing the Fermi surface **
+**3. Visualizing the Fermi surface**
 
 + Using Xcrysden
 

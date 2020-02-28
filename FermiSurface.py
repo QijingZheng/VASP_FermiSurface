@@ -325,6 +325,25 @@ class ebands3d(object):
         # ax.set_aspect('equal')
         ############################################################
 
+        bcell = self.atoms.get_reciprocal_cell()
+        ############################################################
+        # Plot the Brillouin Zone
+        ############################################################
+        p, l, f = get_brillouin_zone_3d(bcell)
+
+        # The BZ outlines
+        for xx in l:
+            ax.plot(xx[:,0], xx[:,1], xx[:,2], color='k', lw=1.0)
+        # art = Poly3DCollection(f, facecolor='k', alpha=0.1)
+        # ax.add_collection3d(art)
+
+        basis_vector_clrs = ['r', 'g', 'b']
+        basis_vector_labs = ['x', 'y', 'z']
+        for ii in range(3):
+            ax.plot([0, bcell[ii,0]], [0, bcell[ii, 1]], [0, bcell[ii, 2]],
+                    color=basis_vector_clrs[ii], lw=1.5)
+            ax.text(bcell[ii, 0], bcell[ii, 1], bcell[ii, 2],
+                    basis_vector_labs[ii])
         ############################################################
         # Plot the Fermi Surface.
         # Marching-cubes algorithm is used to find out the isosurface.
@@ -338,7 +357,7 @@ class ebands3d(object):
                 raise ImportError("scikit-image not installed.\n"
                     "Please install with it with `conda install scikit-image` or `pip install scikit-image`")
 
-        b1, b2, b3 = np.linalg.norm(self.atoms.get_reciprocal_cell(), axis=1)
+        b1, b2, b3 = np.linalg.norm(bcell, axis=1)
         for ispin in range(self.nspin):
             for ii in range(len(self.fermi_xbands[ispin])):
                 b3d = self.fermi_ebands3d_bz[ispin][ii]
@@ -351,7 +370,7 @@ class ebands3d(object):
                         )
                 verts_cart = np.dot(
                         verts / np.array([b1, b2, b3]) - np.ones(3),
-                        self.atoms.get_reciprocal_cell()
+                        bcell
                         )
                 # np.savetxt('v.dat', verts, fmt='%8.4f')
                 # np.savetxt('vc.dat', verts_cart, fmt='%8.4f')
@@ -363,17 +382,6 @@ class ebands3d(object):
                         alpha=0.8, color=mpl.cm.get_cmap(cmap)(nn(cc)))
                 # art.set_edgecolor('k')
                 ax.add_collection3d(art)
-
-        ############################################################
-        # Plot the Brillouin Zone
-        ############################################################
-        p, l, f = get_brillouin_zone_3d(self.atoms.get_reciprocal_cell())
-
-        # The BZ outlines
-        for xx in l:
-            ax.plot(xx[:,0], xx[:,1], xx[:,2], color='b', alpha=0.5, lw=1.0)
-        # art = Poly3DCollection(f, facecolor='w', alpha=1.0)
-        # ax.add_collection3d(art)
 
         ############################################################
         ax.set_xlim(-b1, b1)
@@ -588,4 +596,4 @@ if __name__ == "__main__":
     xx.get_fermi_ebands3d()
     xx.to_bxsf()
     xx.show_fermi_bz()
-    
+   

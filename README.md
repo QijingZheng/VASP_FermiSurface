@@ -2,7 +2,7 @@
 
 ## Fermi Surface
 
-In condensed matter physics, the [Fermi Surface](https://en.wikipedia.org/wiki/Fermi_surface) is the surface of iso-energy in the reciprocal space, the energy of which is referred to as the *Fermi energy* or *Fermi level*. To visualize the Fermi surface, first you have to obtain the band energies in the reciprocal space. For example, one can sample the reciprocal space primitive cell using a uniform k-points grid and then use any *ab initio* code, e.g. *VASP*, to generate the band energies on these uniform grid points. With the band energies on the uniform grid, one can either plot the iso-surface with some coding or just use  [Xcrysden](http://www.xcrysden.org/doc/fermi.html) to do the plotting work. This script use the latter method to visualize the Fermi surface.
+In condensed matter physics, the [Fermi Surface](https://en.wikipedia.org/wiki/Fermi_surface) is the surface of iso-energy in the reciprocal space, the energy of which is referred to as the *Fermi energy* or *Fermi level*. To visualize the Fermi surface, first you have to obtain the band energies in the reciprocal space. For example, one can sample the reciprocal space primitive cell using a uniform k-points grid and then use any *ab initio* code, e.g. *VASP*, to generate the band energies on these uniform grid points. With the band energies on the uniform grid, one can either plot the iso-surface with some coding or just use  [Xcrysden](http://www.xcrysden.org/doc/fermi.html) to do the plotting work.
 
 ## Prerequisites
 

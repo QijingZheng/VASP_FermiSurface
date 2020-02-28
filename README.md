@@ -9,7 +9,8 @@ In condensed matter physics, the [Fermi Surface](https://en.wikipedia.org/wiki/F
 The following python library must be installed to run the script
 
 * [ase](https://wiki.fysik.dtu.dk/ase/ase/io/io.html)
-* [spglib](https://wiki.fysik.dtu.dk/ase/ase/io/io.html)
+* [spglib](https://atztogo.github.io/spglib/)
+* [scikit-image](https://scikit-image.org/)
 
 ## Steps to visualize the Fermi surface
 

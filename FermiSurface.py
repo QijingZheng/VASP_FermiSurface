@@ -325,17 +325,6 @@ class ebands3d(object):
         ############################################################
 
         ############################################################
-        # Plot the Brillouin Zone
-        ############################################################
-        p, l, f = get_brillouin_zone_3d(self.atoms.get_reciprocal_cell())
-
-        for xx in l:
-            ax.plot(xx[:,0], xx[:,1], xx[:,2], color='r', alpha=0.5, lw=1.0)
-        art = Poly3DCollection(f, facecolor='k', alpha=0.1)
-        ax.add_collection3d(art)
-        ############################################################
-
-        ############################################################
         # Plot the Fermi Surface.
         # Marching-cubes algorithm is used to find out the isosurface.
         ############################################################
@@ -353,41 +342,39 @@ class ebands3d(object):
             for ii in range(len(self.fermi_xbands[ispin])):
                 b3d = self.fermi_ebands3d_bz[ispin][ii]
                 nx, ny, nz = b3d.shape
-                print(b3d.shape)
 
                 # https://scikit-image.org/docs/stable/api/skimage.measure.html#skimage.measure.marching_cubes_lewiner
-                # verts : (V, 3) array
-                #     Spatial coordinates for V unique mesh vertices. Coordinate order
-                #     matches input `volume` (M, N, P).
-                # faces : (F, 3) array
-                #     Define triangular faces via referencing vertex indices from ``verts``.
-                #     This algorithm specifically outputs triangles, so each face has
-                #     exactly three indices.
-                # normals : (V, 3) array
-                #     The normal direction at each vertex, as calculated from the
-                #     data.
-                # values : (V, ) array
-                #     Gives a measure for the maximum value of the data in the local region
-                #     near each vertex. This can be used by visualization tools to apply
-                #     a colormap to the mesh.
                 verts, faces, normals, values = marching_cubes(b3d,
                         level=self.efermi,
-                        spacing=(b1/nx, b2/ny, b3/nz)
+                        spacing=(2*b1/nx, 2*b2/ny, 2*b3/nz)
                         )
-                np.savetxt('v.dat', verts, fmt='%8.4f')
                 verts_cart = np.dot(
-                        verts - np.array([0.5, 0.5, 0.5]),
+                        verts / np.array([b1, b2, b3]) - np.ones(3),
                         self.atoms.get_reciprocal_cell()
                         )
-                art = Poly3DCollection(verts[faces], facecolor='r', alpha=0.3)
+                # np.savetxt('v.dat', verts, fmt='%8.4f')
+                # np.savetxt('vc.dat', verts_cart, fmt='%8.4f')
+                art = Poly3DCollection(verts_cart[faces], facecolor='r', alpha=0.3)
+                art.set_edgecolor('k')
                 ax.add_collection3d(art)
+
+        ############################################################
+        # Plot the Brillouin Zone
+        ############################################################
+        p, l, f = get_brillouin_zone_3d(self.atoms.get_reciprocal_cell())
+
+        # The BZ outlines
+        for xx in l:
+            ax.plot(xx[:,0], xx[:,1], xx[:,2], color='b', alpha=0.5, lw=1.0)
+        # art = Poly3DCollection(f, facecolor='w', alpha=1.0)
+        # ax.add_collection3d(art)
 
         ############################################################
         ax.set_xlim(-b1, b1)
         ax.set_ylim(-b2, b2)
         ax.set_zlim(-b3, b3)
 
-        plt.tight_layout()
+        # plt.tight_layout()
         plt.show()
         ############################################################
 

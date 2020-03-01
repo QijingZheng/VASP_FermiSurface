@@ -327,6 +327,9 @@ class ebands3d(object):
         bcell = self.atoms.get_reciprocal_cell()
         b1, b2, b3 = np.linalg.norm(bcell, axis=1)
 
+        # the vertices, rigdges and facets of the BZ
+        p, l, f = get_brillouin_zone_3d(bcell)
+
         if plot.lower == 'mpl':
             ############################################################
             # Plot the Fermi surface using matplotlib
@@ -346,7 +349,6 @@ class ebands3d(object):
             ############################################################
             # Plot the Brillouin Zone
             ############################################################
-            p, l, f = get_brillouin_zone_3d(bcell)
 
             # The BZ outlines
             for xx in l:
@@ -419,7 +421,6 @@ class ebands3d(object):
             ############################################################
             # Plot the Brillouin Zone
             ############################################################
-            p, l, f = get_brillouin_zone_3d(bcell)
 
             bz_line_width = b1 / 200
             # The BZ outlines

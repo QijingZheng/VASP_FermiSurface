@@ -330,7 +330,7 @@ class ebands3d(object):
         # the vertices, rigdges and facets of the BZ
         p, l, f = get_brillouin_zone_3d(bcell)
 
-        if plot.lower == 'mpl':
+        if plot.lower() == 'mpl':
             ############################################################
             # Plot the Fermi surface using matplotlib
             ############################################################
@@ -657,5 +657,5 @@ if __name__ == "__main__":
     xx = ebands3d()
     xx.get_fermi_ebands3d()
     xx.to_bxsf()
-    xx.show_fermi_bz(plot='mayavi')
-   
+    xx.show_fermi_bz()
+    # xx.show_fermi_bz(plot='mayavi')

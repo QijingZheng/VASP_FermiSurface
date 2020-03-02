@@ -224,6 +224,8 @@ class ebands3d(object):
         self.atoms = read(self.poscar)
         # create the grid to ir map
         self.ir_kpts_map(symprec=symprec)
+        # 
+        self.get_fermi_ebands3d()
 
     def get_fermi_ebands3d(self):
         '''
@@ -710,7 +712,7 @@ def main(cml):
                   poscar=p.poscar,
                   kpoints=p.kpoints)
 
-    fs.get_fermi_ebands3d()
+    # fs.get_fermi_ebands3d()
 
     if p.plot == 'xcrys':
         fs.to_bxsf()

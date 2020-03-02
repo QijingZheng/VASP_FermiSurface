@@ -11,6 +11,8 @@ The following python library must be installed to run the script
 * [ase](https://wiki.fysik.dtu.dk/ase/ase/io/io.html)
 * [spglib](https://atztogo.github.io/spglib/)
 * [scikit-image](https://scikit-image.org/)
+* [matplotlib [optional]](https://matplotlib.org/)
+* [mayavi [optional]](https://docs.enthought.com/mayavi/mayavi/)
 
 ## Steps to visualize the Fermi surface
 
@@ -26,21 +28,19 @@ Gamma
 ```
 Moreover, there is *no need* to turn off the symmetry in the `INCAR` file. As is well-known, VASP utilize the symmetry to fold the k-points grid to symmetry-irreducible k-points in the BZ, which  will significantly reduce the computation cost. The script use `spglib` to unfold the irreducible k-points in BZ to the uniform k-points grid.
 
-**2. Generate the .bxsf file**  
 
-When the first step is finished, use the script to obtain 3D bandgrids from VASP output files and save the result in `.bxsf` file.
+**2. Visualizing the Fermi surface**
 
-```python
-from FermiSurface import ebands3d
-
-b3d = ebands3d()
-b3d.get_fermi_ebands3d()
-b3d.to_bxsf(prefix='ebands3d')
-```
-
-**3. Visualizing the Fermi surface**
 
 + Using Xcrysden
+
+First, you need to generate the `bxsf` file as input for `xcrysden`
+
+```bash
+fs.py -i EIGENVAL
+```
+
+then, launch xcrysden
 
 ```bash
 xcrysden --bxsf ebands3d.bxsf
@@ -52,22 +52,15 @@ For example, below is the the Fermi surface of `fcc Cu`
 
 + Using Matplotlib
 
-```python
-from FermiSurface import ebands3d
-
-b3d = ebands3d()
-b3d.get_fermi_ebands3d()
-b3d.show_fermi_bz()
+```bash
+fs.py --plot mpl
 ```
+
 ![Copper Fermi Surface Mayavi](examples/copper/fs_matplotlib_screenshot.jpg) 
 
 + Using Mayavi
-```python
-from FermiSurface import ebands3d
-
-b3d = ebands3d()
-b3d.get_fermi_ebands3d()
-b3d.show_fermi_bz(plot='mayavi')
+```bash
+fs.py --plot mayavi
 ```
 ![Copper Fermi Surface Mayavi](examples/copper/fs_mayavi_screenshot.jpg) 
 

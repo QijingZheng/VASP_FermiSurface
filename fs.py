@@ -554,11 +554,16 @@ class ebands3d(object):
                             bcell
                         )
 
-                    mlab.triangular_mesh([vert[0] for vert in verts_cart],
-                                         [vert[1] for vert in verts_cart],
-                                         [vert[2] for vert in verts_cart],
+                    # cc = np.linalg.norm(np.sum(verts_cart[faces_in_fs], axis=1), axis=1)
+                    # kk = np.linalg.norm(verts_cart, axis=1)
+                    # print(cc.min(), cc.max())
+                    # print(kk.min(), kk.max())
+                    mlab.triangular_mesh(verts_cart[:,0], verts_cart[:,1], verts_cart[:,2],
                                          faces_in_fs,
-                                         colormap='rainbow'
+                                         colormap='rainbow',
+                                         opacity=1.0,
+                                         # scalars=np.linalg.norm(verts_cart, axis=1),
+                                         # vmin=cc.min(), vmax=cc.max()
                                          )
 
             mlab.orientation_axes()

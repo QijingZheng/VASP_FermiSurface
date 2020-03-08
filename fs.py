@@ -630,7 +630,8 @@ class ebands3d(object):
 
         self.fermi_xbands = [band_index[fermi_cross_band[ii]]
                              for ii in range(self.nspin)]
-        if not np.all([True if x else False for x in self.fermi_xbands]):
+
+        if np.sum([x.size for x in self.fermi_xbands]) == 0:
             raise ValueError(
                 "No surface found at {:8.4f} eV!".format(self.efermi))
 

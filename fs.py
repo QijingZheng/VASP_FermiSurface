@@ -192,6 +192,29 @@ def get_brillouin_zone_3d(cell):
     return vor.vertices[bz_vertices], bz_ridges, bz_facets
 
 
+def get_primitive_cell_3d(cell):
+    """
+    Get the vertices, lines and facets of the primitive cell.
+    """
+    cell = np.asarray(cell, dtype=float)
+    assert cell.shape == (3, 3)
+
+    dx, dy, dz = np.mgrid[0:2, 0:2, 0:2]
+    dxyz = np.c_[dx.ravel(), dy.ravel(), dz.ravel()]
+    px, py, pz = np.tensordot(cell, [dx, dy, dz], axes=[0, 0])
+    points = np.c_[px.ravel(), py.ravel(), pz.ravel()]
+
+    lines = []
+    faces = None
+
+    for ii in range(len(points)):
+        for jj in range(ii):
+            if np.abs(dxyz[ii] - dxyz[jj]).sum() == 1:
+                lines.append(np.vstack([points[ii], points[jj]]))
+
+    return points, lines, faces
+
+
 class ebands3d(object):
     '''
     '''
@@ -321,7 +344,7 @@ class ebands3d(object):
             out.write("\n  END_BANDGRID_3D\n")
             out.write("END_BLOCK_BANDGRID_3D\n")
 
-    def show_fermi_bz(self, plot='mpl',
+    def show_fermi_surf(self, cell='bz', plot='mpl',
                       savefig='fs.png',
                       cmap='Spectral'):
         '''
@@ -340,25 +363,30 @@ class ebands3d(object):
         bcell = self.atoms.get_reciprocal_cell()
         b1, b2, b3 = np.linalg.norm(bcell, axis=1)
 
-        # the vertices, rigdges and facets of the BZ
-        p, l, f = get_brillouin_zone_3d(bcell)
+        if cell == 'bz':
+            # the vertices, rigdges and facets of the BZ
+            p, l, f = get_brillouin_zone_3d(bcell)
 
-        #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        # https://docs.scipy.org/doc/scipy/reference/tutorial/spatial.html#voronoi-diagrams
-        # cKDTree is implemented in cython, which is MUCH MUCH FASTER than KDTree
-        #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        from scipy.spatial import cKDTree
-        px, py, pz = np.tensordot(
-            self.atoms.get_reciprocal_cell(),
-            np.mgrid[-1:2, -1:2, -1:2],
-            axes=[0, 0]
-        )
-        points = np.c_[px.ravel(), py.ravel(), pz.ravel()]
-        tree = cKDTree(points)
-        #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        # Gamma point belong to the first BZ.
-        #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        gamma_region_id = tree.query([0, 0, 0])[1]
+            #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            # https://docs.scipy.org/doc/scipy/reference/tutorial/spatial.html#voronoi-diagrams
+            # cKDTree is implemented in cython, which is MUCH MUCH FASTER than KDTree
+            #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            from scipy.spatial import cKDTree
+            px, py, pz = np.tensordot(
+                self.atoms.get_reciprocal_cell(),
+                np.mgrid[-1:2, -1:2, -1:2],
+                axes=[0, 0]
+            )
+            points = np.c_[px.ravel(), py.ravel(), pz.ravel()]
+            tree = cKDTree(points)
+            #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            # Gamma point belong to the first BZ.
+            #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            gamma_region_id = tree.query([0, 0, 0])[1]
+        else:
+            # the vertices, rigdges and facets of the primitive cell
+            p, l, f = get_primitive_cell_3d(bcell)
+
 
         if plot.lower() == 'mpl':
             ############################################################
@@ -391,33 +419,46 @@ class ebands3d(object):
                 for ii in range(len(self.fermi_xbands[ispin])):
                     # the band energies in the uc [0, 1]
                     b3d = self.fermi_ebands3d_uc[ispin][ii]
-                    # expand the band energies to double uc, [-1, 1]
-                    b3d_2uc = np.tile(b3d, (2, 2, 2))
-                    nx, ny, nz = b3d_2uc.shape
+                    if cell == 'bz':
+                        # expand the band energies to double uc, [-1, 1]
+                        b3d_2uc = np.tile(b3d, (2, 2, 2))
+                        nx, ny, nz = b3d_2uc.shape
 
-                    # https://scikit-image.org/docs/stable/api/skimage.measure.html#skimage.measure.marching_cubes_lewiner
-                    verts, faces, normals, values = marching_cubes(b3d_2uc,
-                                                                   level=self.efermi,
-                                                                   spacing=(
-                                                                       2*b1/nx, 2*b2/ny, 2*b3/nz)
-                                                                   )
-                    verts_cart = np.dot(
-                        verts / np.array([b1, b2, b3]) - np.ones(3),
-                        bcell
-                    )
-                    # the region id of the vertices
-                    verts_region_id = tree.query(verts_cart)[1]
-                    # whether the k-points are in BZ?
-                    verts_in_bz = (verts_region_id == gamma_region_id)
-                    # find out the triangles with all vertices inside BZ
-                    verts_cart_bz = verts_cart[faces][
-                        np.alltrue(verts_in_bz[faces], axis=1)
-                    ]
+                        # https://scikit-image.org/docs/stable/api/skimage.measure.html#skimage.measure.marching_cubes_lewiner
+                        verts, faces, normals, values = marching_cubes(b3d_2uc,
+                                                                       level=self.efermi,
+                                                                       spacing=(
+                                                                           2*b1/nx, 2*b2/ny, 2*b3/nz)
+                                                                       )
+                        verts_cart = np.dot(
+                            verts / np.array([b1, b2, b3]) - np.ones(3),
+                            bcell
+                        )
+                        # the region id of the vertices
+                        verts_region_id = tree.query(verts_cart)[1]
+                        # whether the k-points are in BZ?
+                        verts_in_bz = (verts_region_id == gamma_region_id)
+                        # find out the triangles with all vertices inside BZ
+                        verts_cart_fs = verts_cart[faces][
+                            np.alltrue(verts_in_bz[faces], axis=1)
+                        ]
+                    else:
+                        nx, ny, nz = b3d.shape
+                        # https://scikit-image.org/docs/stable/api/skimage.measure.html#skimage.measure.marching_cubes_lewiner
+                        verts, faces, normals, values = marching_cubes(b3d,
+                                                                       level=self.efermi,
+                                                                       spacing=(
+                                                                           b1/nx, b2/ny, b3/nz)
+                                                                       )
+                        verts_cart_fs = np.dot(
+                            verts / np.array([b1, b2, b3]),
+                            bcell
+                        )[faces]
 
-                    cc = np.linalg.norm(np.sum(verts_cart_bz, axis=1), axis=1)
+                    cc = np.linalg.norm(np.sum(verts_cart_fs, axis=1), axis=1)
                     nn = mpl.colors.Normalize(vmin=cc.min(), vmax=cc.max())
 
-                    art = Poly3DCollection(verts_cart_bz, facecolor='r',
+                    art = Poly3DCollection(verts_cart_fs, facecolor='r',
                                            alpha=0.8, color=mpl.cm.get_cmap(cmap)(nn(cc)))
                     # art.set_edgecolor('k')
                     ax.add_collection3d(art)
@@ -478,31 +519,45 @@ class ebands3d(object):
                 for ii in range(len(self.fermi_xbands[ispin])):
                     # the band energies in the uc [0, 1]
                     b3d = self.fermi_ebands3d_uc[ispin][ii]
-                    # expand the band energies to double uc, [-1, 1]
-                    b3d_2uc = np.tile(b3d, (2, 2, 2))
-                    nx, ny, nz = b3d_2uc.shape
+                    if cell == 'bz':
+                        # expand the band energies to double uc, [-1, 1]
+                        b3d_2uc = np.tile(b3d, (2, 2, 2))
+                        nx, ny, nz = b3d_2uc.shape
 
-                    # https://scikit-image.org/docs/stable/api/skimage.measure.html#skimage.measure.marching_cubes_lewiner
-                    verts, faces, normals, values = marching_cubes(b3d_2uc,
-                                                                   level=self.efermi,
-                                                                   spacing=(
-                                                                       2*b1/nx, 2*b2/ny, 2*b3/nz)
-                                                                   )
-                    verts_cart = np.dot(
-                        verts / np.array([b1, b2, b3]) - np.ones(3),
-                        bcell
-                    )
-                    # the region id of the vertices
-                    verts_region_id = tree.query(verts_cart)[1]
-                    # whether the k-points are in BZ?
-                    verts_in_bz = (verts_region_id == gamma_region_id)
-                    # find out the triangles with all vertices inside BZ
-                    faces_in_bz = faces[np.all(verts_in_bz[faces], axis=1)]
+                        # https://scikit-image.org/docs/stable/api/skimage.measure.html#skimage.measure.marching_cubes_lewiner
+                        verts, faces, normals, values = marching_cubes(b3d_2uc,
+                                                                       level=self.efermi,
+                                                                       spacing=(
+                                                                           2*b1/nx, 2*b2/ny, 2*b3/nz)
+                                                                       )
+                        verts_cart = np.dot(
+                            verts / np.array([b1, b2, b3]) - np.ones(3),
+                            bcell
+                        )
+                        # the region id of the vertices
+                        verts_region_id = tree.query(verts_cart)[1]
+                        # whether the k-points are in BZ?
+                        verts_in_bz = (verts_region_id == gamma_region_id)
+                        # find out the triangles with all vertices inside BZ
+                        faces_in_fs = faces[np.all(verts_in_bz[faces], axis=1)]
+                    else:
+                        nx, ny, nz = b3d.shape
+
+                        # https://scikit-image.org/docs/stable/api/skimage.measure.html#skimage.measure.marching_cubes_lewiner
+                        verts, faces_in_fs, normals, values = marching_cubes(b3d,
+                                                                       level=self.efermi,
+                                                                       spacing=(
+                                                                           b1/nx, b2/ny, b3/nz)
+                                                                       )
+                        verts_cart = np.dot(
+                            verts / np.array([b1, b2, b3]),
+                            bcell
+                        )
 
                     mlab.triangular_mesh([vert[0] for vert in verts_cart],
                                          [vert[1] for vert in verts_cart],
                                          [vert[2] for vert in verts_cart],
-                                         faces_in_bz,
+                                         faces_in_fs,
                                          colormap='rainbow'
                                          )
 
@@ -692,6 +747,9 @@ def parse_cml_args(cml):
     arg.add_argument('--plot', dest='plot', action='store', type=str,
                      default='xcrys', choices=['xcrys', 'mpl', 'mayavi'],
                      help='Fermi surface plotting method')
+    arg.add_argument('--cell', dest='cell', action='store', type=str,
+                     default='bz', choices=['uc', 'bz'],
+                     help='Show Fermi surface in BZ or primitive unit cell?')
     arg.add_argument('--efermi', dest='efermi', action='store', type=float,
                      default=None,
                      help='the Fermi energy')
@@ -718,7 +776,7 @@ def main(cml):
     if p.plot == 'xcrys':
         fs.to_bxsf()
     else:
-        fs.show_fermi_bz(p.plot)
+        fs.show_fermi_surf(p.cell, p.plot)
 
 
 if __name__ == "__main__":

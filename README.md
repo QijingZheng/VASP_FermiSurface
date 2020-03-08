@@ -31,6 +31,29 @@ Moreover, there is *no need* to turn off the symmetry in the `INCAR` file. As is
 
 **2. Visualizing the Fermi surface**
 
+At this step, use the script `fs.py` to process the `VASP` output files. 
+
+```
+usage: fs.py [-h] [-i EIGVENVAL] [--poscar POSCAR] [--kpoints KPOINTS]
+             [--plot {xcrys,mpl,mayavi}] [--cell {uc,bz}] [--efermi EFERMI]
+             [--symprec SYMPREC] [--kmesh KMESH KMESH KMESH]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -i EIGVENVAL          Location of the EIGENVAL file. By default, the
+                        KPOINTS/POSCAR are also read from the directory where
+                        the EIGENVAL is in.
+  --poscar POSCAR       location of VASP POSCAR
+  --kpoints KPOINTS     location of VASP KPOINTS
+  --plot {xcrys,mpl,mayavi}
+                        Fermi surface plotting method
+  --cell {uc,bz}        Show Fermi surface in BZ or primitive unit cell?
+  --efermi EFERMI       the Fermi energy
+  --symprec SYMPREC     the symmetry precision used in spglib
+  --kmesh KMESH KMESH KMESH
+                        the kmesh in the KPOINTS
+
+```
 
 + Using Xcrysden
 

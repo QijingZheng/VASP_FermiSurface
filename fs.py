@@ -540,6 +540,15 @@ class ebands3d(object):
                         verts_in_bz = (verts_region_id == gamma_region_id)
                         # find out the triangles with all vertices inside BZ
                         faces_in_fs = faces[np.all(verts_in_bz[faces], axis=1)]
+
+                        # keeps the vertices on the Fermi surface and remove all
+                        # the other vertices
+                        vertices_old_id = np.unique(faces_in_fs)
+                        vertices_new_id = range(vertices_old_id.size)
+                        old_new_map = dict(np.c_[vertices_old_id, vertices_new_id])
+
+                        verts_cart = verts_cart[vertices_old_id]
+                        faces_in_fs = [[old_new_map[v] for v in f] for f in faces_in_fs]
                     else:
                         nx, ny, nz = b3d.shape
 
@@ -562,7 +571,7 @@ class ebands3d(object):
                                          faces_in_fs,
                                          colormap='rainbow',
                                          opacity=1.0,
-                                         # scalars=np.linalg.norm(verts_cart, axis=1),
+                                         scalars=np.linalg.norm(verts_cart, axis=1),
                                          # vmin=cc.min(), vmax=cc.max()
                                          )
 

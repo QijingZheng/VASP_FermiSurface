@@ -261,6 +261,7 @@ class ebands3d(object):
         # band energies of the k-points within the Brillouin Zone
         # self.fermi_ebands3d_bz = []
 
+        # nx, ny, nz = self.kmesh
         for ispin in range(self.nspin):
             uc_tmp = []
             # bz_tmp = []
@@ -268,6 +269,8 @@ class ebands3d(object):
                 # the band energies of the k-points within primitive cell
                 etmp = self.ir_ebands[ispin, self.grid_to_ir_map, iband]
                 etmp.shape = self.kmesh
+                # # make the band energies periodic in the primitive cell
+                # etmp = np.tile(etmp, (2,2,2))[:nx+1, :ny+1, :nz+1]
                 uc_tmp.append(etmp)
 
                 # # the band energies of the k-points within Brillouin Zone
@@ -283,6 +286,9 @@ class ebands3d(object):
 
             self.fermi_ebands3d_uc.append(uc_tmp)
             # self.fermi_ebands3d_bz.append(bz_tmp)
+
+        # periodic band energies, mesh size +1
+        # self.kmesh = [nx+1, ny+1, nz+1]
 
     def to_bxsf(self, prefix='ebands3d', ncol=6):
         '''
@@ -444,6 +450,9 @@ class ebands3d(object):
                         ]
                     else:
                         nx, ny, nz = b3d.shape
+                        # make band energies periodic in primitive cell
+                        b3d = np.tile(b3d, (2,2,2))[:nx+1, :ny+1, :nz+1]
+
                         # https://scikit-image.org/docs/stable/api/skimage.measure.html#skimage.measure.marching_cubes_lewiner
                         verts, faces, normals, values = marching_cubes(b3d,
                                                                        level=self.efermi,
@@ -473,9 +482,14 @@ class ebands3d(object):
             # art = Poly3DCollection(f, facecolor='k', alpha=0.1)
             # ax.add_collection3d(art)
             ############################################################
-            ax.set_xlim(-b1, b1)
-            ax.set_ylim(-b2, b2)
-            ax.set_zlim(-b3, b3)
+            if cell == 'bz':
+                ax.set_xlim(-b1, b1)
+                ax.set_ylim(-b2, b2)
+                ax.set_zlim(-b3, b3)
+            else:
+                ax.set_xlim(0, b1)
+                ax.set_ylim(0, b2)
+                ax.set_zlim(0, b3)
 
             ax.set_title('Fermi Energy: {:.4f} eV'.format(self.efermi),
                          fontsize='small')
@@ -489,7 +503,7 @@ class ebands3d(object):
             from mayavi import mlab
             # from tvtk.tools import visual
 
-            fig = mlab.figure()
+            fig = mlab.figure(size=(800, 800))
             # visual.set_viewer(fig)
 
             # for b in bcell:
@@ -551,6 +565,8 @@ class ebands3d(object):
                         faces_in_fs = [[old_new_map[v] for v in f] for f in faces_in_fs]
                     else:
                         nx, ny, nz = b3d.shape
+                        # make band energies periodic in primitive cell
+                        b3d = np.tile(b3d, (2,2,2))[:nx+1, :ny+1, :nz+1]
 
                         # https://scikit-image.org/docs/stable/api/skimage.measure.html#skimage.measure.marching_cubes_lewiner
                         verts, faces_in_fs, normals, values = marching_cubes(b3d,

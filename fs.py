@@ -250,6 +250,29 @@ class ebands3d(object):
         # 
         self.get_fermi_ebands3d()
 
+    # def interpolate_ebands3d(self, mesh):
+    #     '''
+    #     Interpolate the band energies in the primitive cell using zero-padding fft.
+    #     '''
+
+    #     from scipy.fftpack import fftn, ifftn
+        
+    #     mesh = np.asarray(mesh, dtype=int)
+    #     assert mesh.shape == (3,), "Invalid dimension of new mesh!"
+    #     self.kmesh = mesh
+
+    #     ebands3d_uc_interp = []
+    #     for ispin in range(self.nspin):
+    #         uc_tmp = []
+    #         for b3d in self.fermi_ebands3d_uc[ispin]:
+    #             b3d_interp = ifftn(
+    #                 fftn(b3d, mesh)
+    #             ).real          # only keep the real part, the imaginary part is supposed to be small
+    #             uc_tmp.append(b3d_interp)
+    #         ebands3d_uc_interp.append(uc_tmp)
+    #     self.fermi_ebands3d_uc = ebands3d_uc_interp
+            
+
     def get_fermi_ebands3d(self):
         '''
         For those bands that corss the Fermi level, unfold the band energies on
@@ -451,7 +474,8 @@ class ebands3d(object):
                     else:
                         nx, ny, nz = b3d.shape
                         # make band energies periodic in primitive cell
-                        b3d = np.tile(b3d, (2,2,2))[:nx+1, :ny+1, :nz+1]
+                        # b3d = np.tile(b3d, (2,2,2))[:nx+1, :ny+1, :nz+1]
+                        b3d = np.pad(b3d, (0,1), mode='wrap') # mayby a little faster?
 
                         # https://scikit-image.org/docs/stable/api/skimage.measure.html#skimage.measure.marching_cubes_lewiner
                         verts, faces, normals, values = marching_cubes(b3d,
@@ -566,7 +590,8 @@ class ebands3d(object):
                     else:
                         nx, ny, nz = b3d.shape
                         # make band energies periodic in primitive cell
-                        b3d = np.tile(b3d, (2,2,2))[:nx+1, :ny+1, :nz+1]
+                        # b3d = np.tile(b3d, (2,2,2))[:nx+1, :ny+1, :nz+1]
+                        b3d = np.pad(b3d, (0,1), mode='wrap') # mayby a little faster?
 
                         # https://scikit-image.org/docs/stable/api/skimage.measure.html#skimage.measure.marching_cubes_lewiner
                         verts, faces_in_fs, normals, values = marching_cubes(b3d,
@@ -789,6 +814,9 @@ def parse_cml_args(cml):
     arg.add_argument('--kmesh', dest='kmesh', action='store', type=int,
                      default=None, nargs=3,
                      help='the kmesh in the KPOINTS')
+    # arg.add_argument('--interp', dest='new_kmesh', action='store', type=int,
+    #                  default=None, nargs=3,
+    #                  help='the new grid size')
 
     return arg.parse_args(cml)
 
@@ -800,6 +828,9 @@ def main(cml):
                   symprec=p.symprec,
                   poscar=p.poscar,
                   kpoints=p.kpoints)
+
+    # if p.new_kmesh is not None:
+    #     fs.interpolate_ebands3d(p.new_kmesh)
 
     # fs.get_fermi_ebands3d()
 

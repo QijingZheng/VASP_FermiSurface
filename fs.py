@@ -255,21 +255,23 @@ class ebands3d(object):
     #     Interpolate the band energies in the primitive cell using zero-padding fft.
     #     '''
 
-    #     from scipy.fftpack import fftn, ifftn
+    #     # Somehow, only numpy irfft/rfft support fft interpolation.
+    #     from numpy.fft import irfftn, rfftn, irfft, rfft
         
     #     mesh = np.asarray(mesh, dtype=int)
     #     assert mesh.shape == (3,), "Invalid dimension of new mesh!"
-    #     self.kmesh = mesh
 
     #     ebands3d_uc_interp = []
     #     for ispin in range(self.nspin):
     #         uc_tmp = []
     #         for b3d in self.fermi_ebands3d_uc[ispin]:
-    #             b3d_interp = ifftn(
-    #                 fftn(b3d, mesh)
-    #             ).real          # only keep the real part, the imaginary part is supposed to be small
-    #             uc_tmp.append(b3d_interp)
+    #             b3d_interp = irfftn(
+    #                 rfftn(b3d), s=mesh, axes=(0,1,2)
+    #             ) * np.prod(mesh) / np.prod(self.kmesh)          # only keep the real part, the imaginary part is supposed to be small
+    #             uc_tmp.append(b3d_interp.copy())
     #         ebands3d_uc_interp.append(uc_tmp)
+
+    #     self.kmesh = mesh
     #     self.fermi_ebands3d_uc = ebands3d_uc_interp
             
 
@@ -831,8 +833,6 @@ def main(cml):
 
     # if p.new_kmesh is not None:
     #     fs.interpolate_ebands3d(p.new_kmesh)
-
-    # fs.get_fermi_ebands3d()
 
     if p.plot == 'xcrys':
         fs.to_bxsf()

@@ -250,29 +250,40 @@ class ebands3d(object):
         # 
         self.get_fermi_ebands3d()
 
-    # def interpolate_ebands3d(self, mesh):
-    #     '''
-    #     Interpolate the band energies in the primitive cell using zero-padding fft.
-    #     '''
+    def interpolate_ebands3d(self, mesh):
+        '''
+        Interpolate the band energies in the primitive cell using zero-padding fft.
+        '''
 
-    #     # Somehow, only numpy irfft/rfft support fft interpolation.
-    #     from numpy.fft import irfftn, rfftn, irfft, rfft
+        # Somehow, only numpy irfft/rfft support fft interpolation.
+        from numpy.fft import irfftn, rfftn, irfft, rfft
         
-    #     mesh = np.asarray(mesh, dtype=int)
-    #     assert mesh.shape == (3,), "Invalid dimension of new mesh!"
+        mesh = np.asarray(mesh, dtype=int)
+        assert mesh.shape == (3,), "Invalid dimension of new mesh!"
+        nx, ny, nz = self.kmesh
+        nnx, nny, nnz = mesh
 
-    #     ebands3d_uc_interp = []
-    #     for ispin in range(self.nspin):
-    #         uc_tmp = []
-    #         for b3d in self.fermi_ebands3d_uc[ispin]:
-    #             b3d_interp = irfftn(
-    #                 rfftn(b3d), s=mesh, axes=(0,1,2)
-    #             ) * np.prod(mesh) / np.prod(self.kmesh)          # only keep the real part, the imaginary part is supposed to be small
-    #             uc_tmp.append(b3d_interp.copy())
-    #         ebands3d_uc_interp.append(uc_tmp)
+        ebands3d_uc_interp = []
+        for ispin in range(self.nspin):
+            uc_tmp = []
+            for b3d in self.fermi_ebands3d_uc[ispin]:
+                b0 = irfft(rfft(b3d), nnz, axis=2) * nnz / nz # 1. interpolate along the z-axis
+                b1 = np.swapaxes(b0, 1, 2)                    # 2. interpolate along the y-axis
+                b2 = irfft(rfft(b1), nny, axis=2) * nny / ny 
+                b3 = np.swapaxes(b2, 0, 2)                    # 2. interpolate along the x-axis
+                b4 = irfft(rfft(b3), nnx, axis=2) * nnx / nx 
+                b5 = np.swapaxes(
+                    np.swapaxes(b4, 0, 2), 1, 2
+                )
+                
+                # b3d_interp = irfftn(
+                #     rfftn(b3d), s=mesh, axes=(0,1,2)
+                # ) * np.prod(mesh) / np.prod(self.kmesh)          # only keep the real part, the imaginary part is supposed to be small
+                uc_tmp.append(b5.copy())
+            ebands3d_uc_interp.append(uc_tmp)
 
-    #     self.kmesh = mesh
-    #     self.fermi_ebands3d_uc = ebands3d_uc_interp
+        self.kmesh = mesh
+        self.fermi_ebands3d_uc = ebands3d_uc_interp
             
 
     def get_fermi_ebands3d(self):
@@ -816,9 +827,9 @@ def parse_cml_args(cml):
     arg.add_argument('--kmesh', dest='kmesh', action='store', type=int,
                      default=None, nargs=3,
                      help='the kmesh in the KPOINTS')
-    # arg.add_argument('--interp', dest='new_kmesh', action='store', type=int,
-    #                  default=None, nargs=3,
-    #                  help='the new grid size')
+    arg.add_argument('--interp', dest='new_kmesh', action='store', type=int,
+                     default=None, nargs=3,
+                     help='the new grid size')
 
     return arg.parse_args(cml)
 
@@ -831,8 +842,8 @@ def main(cml):
                   poscar=p.poscar,
                   kpoints=p.kpoints)
 
-    # if p.new_kmesh is not None:
-    #     fs.interpolate_ebands3d(p.new_kmesh)
+    if p.new_kmesh is not None:
+        fs.interpolate_ebands3d(p.new_kmesh)
 
     if p.plot == 'xcrys':
         fs.to_bxsf()

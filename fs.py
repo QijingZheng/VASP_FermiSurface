@@ -352,7 +352,7 @@ class ebands3d(object):
             # Reciprocal lattice vector
             out.write(
                 '\n'.join(["    " + ''.join(["%16.8f" % xx for xx in row])
-                           for row in self.atoms.get_reciprocal_cell()])
+                           for row in self.atoms.cell.reciprocal()])
             )
 
             # write the band grid for each band, the values inside a band grid
@@ -394,7 +394,8 @@ class ebands3d(object):
         '''
 
         try:
-            from skimage.measure import marching_cubes_lewiner as marching_cubes
+            # from skimage.measure import marching_cubes_lewiner as marching_cubes
+            from skimage.measure import marching_cubes as marching_cubes
         except ImportError:
             try:
                 from skimage.measure import marching_cubes
@@ -402,7 +403,7 @@ class ebands3d(object):
                 raise ImportError("scikit-image not installed.\n"
                                   "Please install with it with `conda install scikit-image` or `pip install scikit-image`")
 
-        bcell = self.atoms.get_reciprocal_cell()
+        bcell = self.atoms.cell.reciprocal()
         b1, b2, b3 = np.linalg.norm(bcell, axis=1)
 
         if cell == 'bz':
@@ -415,7 +416,7 @@ class ebands3d(object):
             #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             from scipy.spatial import cKDTree
             px, py, pz = np.tensordot(
-                self.atoms.get_reciprocal_cell(),
+                self.atoms.cell.reciprocal(),
                 np.mgrid[-1:2, -1:2, -1:2],
                 axes=[0, 0]
             )
@@ -680,7 +681,7 @@ class ebands3d(object):
         # # cKDTree is implemented in cython, which is MUCH MUCH FASTER than KDTree
         # #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         # from scipy.spatial import cKDTree
-        # px, py, pz = np.tensordot(self.atoms.get_reciprocal_cell(), np.mgrid[-1:2, -1:2, -1:2], axes=[0,0])
+        # px, py, pz = np.tensordot(self.atoms.cell.reciprocal(), np.mgrid[-1:2, -1:2, -1:2], axes=[0,0])
         # points = np.c_[px.ravel(), py.ravel(), pz.ravel()]
         # tree = cKDTree(points)
         #
@@ -692,7 +693,7 @@ class ebands3d(object):
         # gamma_region_id = tree.query([0,0,0])[1]
         # kgrid_2uc_region_id = tree.query(np.dot(self.kgrid_2uc /
         #     np.array(self.kmesh, dtype=float),
-        #     self.atoms.get_reciprocal_cell()))[1]
+        #     self.atoms.cell.reciprocal()))[1]
         # #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         #
         # # t3 = time.time()

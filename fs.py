@@ -305,6 +305,7 @@ class ebands3d(object):
                 # the band energies of the k-points within primitive cell
                 etmp = self.ir_ebands[ispin, self.grid_to_ir_map, iband]
                 etmp.shape = list(reversed(self.kmesh))         # the first axis of etmp corresponds to the last cell direction
+                                                                # x-index in the "grid" of ir_kpts_map runs fastest
                 etmp = np.swapaxes(etmp, 0, 2)                  # swap axes to turn back the order
                 # # make the band energies periodic in the primitive cell
                 # etmp = np.tile(etmp, (2,2,2))[:nx+1, :ny+1, :nz+1]
@@ -657,6 +658,8 @@ class ebands3d(object):
         # the k-point grid in the primitive cell
         # [-0.5, 0.5)
         self.kgrid_uc = grid
+        # one can see that x-index in the grid runs fastest.
+        # np.savetxt("grid.dat", grid, fmt='%6d')
         ir_kpts = grid[np.unique(mapping)] / self.kmesh.astype(float)
         assert (ir_kpts.shape == self.ir_kpath.shape) and \
                (np.allclose(self.ir_kpath, ir_kpts)), \

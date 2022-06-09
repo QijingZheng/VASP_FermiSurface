@@ -304,7 +304,8 @@ class ebands3d(object):
             for iband in self.fermi_xbands[ispin]:
                 # the band energies of the k-points within primitive cell
                 etmp = self.ir_ebands[ispin, self.grid_to_ir_map, iband]
-                etmp.shape = self.kmesh
+                etmp.shape = list(reversed(self.kmesh))         # the first axis of etmp corresponds to the last cell direction
+                etmp = np.swapaxes(etmp, 0, 2)                  # swap axes to turn back the order
                 # # make the band energies periodic in the primitive cell
                 # etmp = np.tile(etmp, (2,2,2))[:nx+1, :ny+1, :nz+1]
                 uc_tmp.append(etmp)
@@ -714,7 +715,7 @@ class ebands3d(object):
         Set the k-points mesh, Read from KPOINTS if not given.
         '''
 
-        if kmesh:
+        if kmesh.all():
             self.kmesh = kmesh
         else:
             with open(self.kpoints) as k:
@@ -838,7 +839,7 @@ def parse_cml_args(cml):
 def main(cml):
     p = parse_cml_args(cml)
 
-    fs = ebands3d(eigvenval=p.eigvenval, efermi=p.efermi, kmesh=p.kmesh,
+    fs = ebands3d(eigvenval=p.eigvenval, efermi=p.efermi, kmesh=np.array(p.kmesh),
                   symprec=p.symprec,
                   poscar=p.poscar,
                   kpoints=p.kpoints)

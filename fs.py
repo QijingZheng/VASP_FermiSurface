@@ -781,7 +781,7 @@ class ebands3d(object):
 
             # extract the k-points info
             dump = np.array(
-                [xx.split() for xx in dat[::self.nspin * self.nbnds + 1]], dtype=float)
+                [xx.split() for xx in dat[::self.nbnds + 1]], dtype=float)
             self.ir_kpath = dump[:self.ir_nkpts, :3]
             self.ir_kptwt = dump[:self.ir_nkpts, -1]
 

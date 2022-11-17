@@ -655,9 +655,18 @@ class ebands3d(object):
         mapping, grid = spglib.get_ir_reciprocal_mesh(self.kmesh, cell,
                                                       is_shift=[0, 0, 0], symprec=symprec)
 
+        ############################################################
+        # bugfix by @chenyubi14 for ISYM=-1
+        ############################################################
+        # if ISYM=-1, don't use spglib
+        if self.ir_kpath.shape == grid.shape:
+            print('Warning: No symmetry operation found! Did you set ISYM = -1?')
+            self.grid_to_ir_map = range(self.ir_nkpts)
+            return
+        
         # the k-point grid in the primitive cell
         # [-0.5, 0.5)
-        self.kgrid_uc = grid
+        # self.kgrid_uc = grid
         # one can see that x-index in the grid runs fastest.
         # np.savetxt("grid.dat", grid, fmt='%6d')
         ir_kpts = grid[np.unique(mapping)] / self.kmesh.astype(float)

@@ -508,7 +508,7 @@ class ebands3d(object):
                     nn = mpl.colors.Normalize(vmin=cc.min(), vmax=cc.max())
 
                     art = Poly3DCollection(verts_cart_fs, facecolor='r',
-                                           alpha=0.8, color=mpl.cm.get_cmap(cmap)(nn(cc)))
+                                           alpha=0.8, color=mpl.colormaps.get_cmap(cmap)(nn(cc)))
                     # art.set_edgecolor('k')
                     ax.add_collection3d(art)
 
